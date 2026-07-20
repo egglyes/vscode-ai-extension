@@ -9,13 +9,15 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:aiFixer.fixFromImage"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "ai-fixer.helloWorld",
-        "title": "Hello World"
+        "command": "aiFixer.fixFromImage",
+        "title": "AI Fixer: Fix Code from Screenshot"
       }
     ]
   },
