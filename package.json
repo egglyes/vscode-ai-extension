@@ -1,17 +1,24 @@
 {
   "name": "ai-fixer",
-  "displayName": "ai-fixer",
-  "description": "This AI reads code from images",
+  "displayName": "AI Fixer",
+  "description": "AI-powered Visual Studio Code extension that fixes and explains code from screenshots.",
   "version": "0.0.1",
+  "publisher": "egglyes",
+  "license": "MIT",
   "engines": {
-    "vscode": "^1.125.0"
+    "vscode": "^1.93.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:aiFixer.fixFromImage"
+  "keywords": [
+    "ai",
+    "code",
+    "screenshot",
+    "ocr",
+    "assistant"
   ],
+  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -36,7 +43,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.125.0",
+    "@types/vscode": "^1.93.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
     "typescript-eslint": "^8.61.1",
@@ -50,5 +57,13 @@
   "overrides": {
     "diff": "^8.0.4",
     "serialize-javascript": "^7.0.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/egglyes/vscode-ai-extension.git"
+  },
+  "homepage": "https://github.com/egglyes/vscode-ai-extension",
+  "bugs": {
+    "url": "https://github.com/egglyes/vscode-ai-extension/issues"
   }
 }
