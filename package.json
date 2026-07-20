@@ -2,7 +2,7 @@
   "name": "ai-fixer",
   "displayName": "AI Fixer",
   "description": "AI-powered Visual Studio Code extension that fixes and explains code from screenshots.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "egglyes",
   "license": "MIT",
   "engines": {
@@ -23,10 +23,44 @@
   "contributes": {
     "commands": [
       {
-        "command": "aiFixer.fixFromImage",
-        "title": "AI Fixer: Fix Code from Screenshot"
+        "command": "aiFixer.openChat",
+        "title": "AI Fixer: Open Chat",
+        "icon": "$(comment-discussion)"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "aiFixer",
+          "title": "AI Fixer",
+          "icon": "$(comment-discussion)"
+        }
+      ]
+    },
+    "views": {
+      "aiFixer": [
+        {
+          "type": "webview",
+          "id": "aiFixer.chatView",
+          "name": "Chat"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AI Fixer",
+      "properties": {
+        "aiFixer.ollamaUrl": {
+          "type": "string",
+          "default": "http://172.16.49.129:11434",
+          "description": "Base URL of the Ollama server (e.g. http://172.16.49.129:11434)."
+        },
+        "aiFixer.coderModel": {
+          "type": "string",
+          "default": "my-coder:latest",
+          "description": "Model used to generate the fix from the transcribed code."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -43,16 +77,16 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.93.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "typescript-eslint": "^8.61.1",
-    "eslint": "^10.5.0",
+    "@types/vscode": "^1.93.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
     "esbuild": "^0.28.1",
+    "eslint": "^10.5.0",
     "npm-run-all": "^4.1.5",
     "typescript": "^6.0.3",
-    "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.0.0"
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "diff": "^8.0.4",
@@ -65,5 +99,8 @@
   "homepage": "https://github.com/egglyes/vscode-ai-extension",
   "bugs": {
     "url": "https://github.com/egglyes/vscode-ai-extension/issues"
+  },
+  "dependencies": {
+    "tesseract.js": "^7.0.0"
   }
 }

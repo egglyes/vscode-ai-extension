@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;"
+    />
+    <title>AI Fixer Chat</title>
+    <style>
+      :root {
+        --bg: var(--vscode-editor-background);
+        --fg: var(--vscode-editor-foreground);
+        --muted: var(--vscode-descriptionForeground);
+        --border: var(--vscode-editorWidget-border, transparent);
+        --user-bg: var(--vscode-button-background);
+        --user-fg: var(--vscode-button-foreground);
+        --assistant-bg: var(--vscode-editor-inactiveSelectionBackground);
+        --input-bg: var(--vscode-input-background);
+        --input-fg: var(--vscode-input-foreground);
+        --accent: var(--vscode-focusBorder);
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--vscode-font-family);
+        font-size: var(--vscode-font-size);
+      }
+      body { display: flex; flex-direction: column; }
+
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        flex: 0 0 auto;
+      }
+      header label { font-size: 12px; color: var(--muted); }
+      header select {
+        flex: 1;
+        background: var(--input-bg);
+        color: var(--input-fg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 4px 6px;
+        font-family: inherit;
+        font-size: inherit;
+      }
+
+      #messages {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .msg {
+        max-width: 100%;
+        padding: 8px 12px;
+        border-radius: 8px;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+        line-height: 1.45;
+      }
+      .msg.user {
+        background: var(--user-bg);
+        color: var(--user-fg);
+        align-self: flex-end;
+        max-width: 85%;
+      }
+      .msg.assistant {
+        background: var(--assistant-bg);
+        color: var(--fg);
+        align-self: flex-start;
+        max-width: 95%;
+      }
+      .msg.assistant.streaming::after {
+        content: "▍";
+        animation: blink 1s steps(1) infinite;
+        color: var(--muted);
+      }
+      @keyframes blink { 50% { opacity: 0; } }
+      .msg .role {
+        display: block;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        opacity: 0.7;
+        margin-bottom: 4px;
+      }
+      .msg .images {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 6px;
+      }
+      .msg .images img {
+        max-width: 140px;
+        max-height: 140px;
+        border-radius: 4px;
+        object-fit: cover;
+      }
+
+      .composer {
+        border-top: 1px solid var(--border);
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 0 0 auto;
+        background: var(--bg);
+      }
+      .composer .attachments {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .composer .attachments .chip {
+        position: relative;
+        width: 56px;
+        height: 56px;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+      }
+      .composer .attachments .chip img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .composer .attachments .chip button {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 18px;
+        height: 18px;
+        border: none;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
+        line-height: 1;
+      }
+      .composer textarea {
+        width: 100%;
+        min-height: 60px;
+        max-height: 200px;
+        resize: vertical;
+        background: var(--input-bg);
+        color: var(--input-fg);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 8px;
+        font-family: inherit;
+        font-size: inherit;
+        outline: none;
+      }
+      .composer textarea:focus { border-color: var(--accent); }
+      .composer .row {
+        display: flex;
+        gap: 6px;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .composer .row .left { display: flex; gap: 6px; align-items: center; }
+      .composer button {
+        background: var(--vscode-button-secondaryBackground);
+        color: var(--vscode-button-secondaryForeground);
+        border: none;
+        border-radius: 4px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: inherit;
+      }
+      .composer button:hover { background: var(--vscode-button-secondaryHoverBackground); }
+      .composer button.primary {
+        background: var(--vscode-button-background);
+        color: var(--vscode-button-foreground);
+      }
+      .composer button.primary:hover { background: var(--vscode-button-hoverBackground); }
+      .composer button:disabled { opacity: 0.5; cursor: default; }
+      .composer .hint { font-size: 11px; color: var(--muted); }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        align-self: flex-start;
+        font-size: 11px;
+        color: var(--muted);
+        background: var(--assistant-bg);
+        padding: 4px 8px;
+        border-radius: 12px;
+        max-width: 100%;
+      }
+      .status-pill::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        animation: pulse 1.2s ease-in-out infinite;
+        flex: 0 0 auto;
+      }
+      .status-pill.error { color: var(--vscode-errorForeground, #f48771); }
+      .status-pill.error::before { background: var(--vscode-errorForeground, #f48771); animation: none; }
+      @keyframes pulse {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 1; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="hint" id="pipeline">tesseract.js → my-coder</span>
+    </header>
+
+    <div id="messages"></div>
+
+    <div class="composer">
+      <div class="attachments" id="attachments" hidden></div>
+      <textarea
+        id="input"
+        placeholder="Ask anything. Shift+Enter for newline. Enter to send."
+        rows="2"
+      ></textarea>
+      <div class="row">
+        <div class="left">
+          <button id="attach" title="Attach image">📎 Attach</button>
+          <span class="hint" id="hint">Enter to send · Shift+Enter for newline</span>
+        </div>
+        <div>
+          <button id="stop" class="primary" hidden>Stop</button>
+          <button id="send" class="primary">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const vscode = acquireVsCodeApi();
+      const messagesEl = document.getElementById("messages");
+      const inputEl = document.getElementById("input");
+      const sendBtn = document.getElementById("send");
+      const stopBtn = document.getElementById("stop");
+      const attachBtn = document.getElementById("attach");
+      const attachmentsEl = document.getElementById("attachments");
+      const hintEl = document.getElementById("hint");
+      const pipelineEl = document.getElementById("pipeline");
+
+      let attachments = []; // { id, dataUrl, base64 }
+      let currentStreamId = null;
+      let currentStreamEl = null;
+      let currentStatusEl = null;
+
+      function uid() {
+        return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      }
+
+      function renderAttachments() {
+        attachmentsEl.innerHTML = "";
+        if (attachments.length === 0) {
+          attachmentsEl.hidden = true;
+          return;
+        }
+        attachmentsEl.hidden = false;
+        attachments.forEach((a) => {
+          const chip = document.createElement("div");
+          chip.className = "chip";
+          const img = document.createElement("img");
+          img.src = a.dataUrl;
+          const rm = document.createElement("button");
+          rm.textContent = "×";
+          rm.title = "Remove";
+          rm.addEventListener("click", () => {
+            attachments = attachments.filter((x) => x.id !== a.id);
+            renderAttachments();
+          });
+          chip.appendChild(img);
+          chip.appendChild(rm);
+          attachmentsEl.appendChild(chip);
+        });
+      }
+
+      function addMessage(role, opts = {}) {
+        const el = document.createElement("div");
+        el.className = "msg " + role;
+        if (opts.streaming) el.classList.add("streaming");
+        const roleEl = document.createElement("span");
+        roleEl.className = "role";
+        roleEl.textContent = role === "user" ? "You" : "AI Fixer";
+        el.appendChild(roleEl);
+        const body = document.createElement("div");
+        body.className = "body";
+        el.appendChild(body);
+        if (opts.images && opts.images.length) {
+          const wrap = document.createElement("div");
+          wrap.className = "images";
+          opts.images.forEach((src) => {
+            const i = document.createElement("img");
+            i.src = src;
+            wrap.appendChild(i);
+          });
+          el.appendChild(wrap);
+        }
+        messagesEl.appendChild(el);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        return body;
+      }
+
+      function setModels(coder) {
+        pipelineEl.textContent = `tesseract.js → ${coder}`;
+      }
+
+      function clearStatus() {
+        if (currentStatusEl && currentStatusEl.parentNode) {
+          currentStatusEl.parentNode.removeChild(currentStatusEl);
+        }
+        currentStatusEl = null;
+      }
+
+      function setStatus(text, isError = false) {
+        clearStatus();
+        const el = document.createElement("div");
+        el.className = "status-pill" + (isError ? " error" : "");
+        el.textContent = text;
+        messagesEl.appendChild(el);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        currentStatusEl = el;
+      }
+
+      function setStreaming(streaming) {
+        sendBtn.hidden = streaming;
+        stopBtn.hidden = !streaming;
+        inputEl.disabled = streaming;
+        attachBtn.disabled = streaming;
+        hintEl.textContent = streaming
+          ? "Working… click Stop to cancel."
+          : "Enter to send · Shift+Enter for newline";
+      }
+
+      function send() {
+        const text = inputEl.value.trim();
+        if (!text && attachments.length === 0) return;
+        if (currentStreamId) return;
+
+        const id = uid();
+        addMessage("user", {
+          images: attachments.map((a) => a.dataUrl),
+        }).textContent = text || "(image only)";
+
+        currentStreamId = id;
+        currentStreamEl = addMessage("assistant", { streaming: true });
+        currentStreamEl.textContent = "";
+        setStreaming(true);
+        setStatus(attachments.length > 0 ? "Reading screenshot…" : "Generating fix with my-coder…");
+
+        vscode.postMessage({
+          type: "send",
+          id,
+          text,
+          images: attachments.map((a) => a.base64),
+        });
+
+        inputEl.value = "";
+        attachments = [];
+        renderAttachments();
+      }
+
+      function stop() {
+        if (currentStreamId) {
+          vscode.postMessage({ type: "cancel", id: currentStreamId });
+        }
+      }
+
+      sendBtn.addEventListener("click", send);
+      stopBtn.addEventListener("click", stop);
+      attachBtn.addEventListener("click", () => {
+        vscode.postMessage({ type: "pickImage" });
+      });
+      inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          send();
+        }
+      });
+
+      window.addEventListener("message", (event) => {
+        const msg = event.data;
+        switch (msg.type) {
+          case "init":
+            setModels(msg.coderModel || "my-coder:latest");
+            break;
+          case "imagePicked":
+            if (msg.base64) {
+              attachments.push({
+                id: uid(),
+                dataUrl: "data:" + (msg.mime || "image/png") + ";base64," + msg.base64,
+                base64: msg.base64,
+              });
+              renderAttachments();
+            }
+            break;
+          case "status":
+            if (msg.id === currentStreamId) {
+              setStatus(msg.text || "", false);
+            }
+            break;
+          case "chunk":
+            if (msg.id === currentStreamId && currentStreamEl) {
+              clearStatus();
+              currentStreamEl.textContent += msg.delta;
+              messagesEl.scrollTop = messagesEl.scrollHeight;
+            }
+            break;
+          case "done":
+            if (msg.id === currentStreamId) {
+              if (currentStreamEl) currentStreamEl.parentElement.classList.remove("streaming");
+              clearStatus();
+              currentStreamId = null;
+              currentStreamEl = null;
+              setStreaming(false);
+            }
+            break;
+          case "error":
+            if (msg.id === currentStreamId) {
+              if (currentStreamEl) {
+                currentStreamEl.textContent +=
+                  (currentStreamEl.textContent ? "\n\n" : "") + "⚠ " + msg.message;
+                currentStreamEl.parentElement.classList.remove("streaming");
+              }
+              clearStatus();
+              currentStreamId = null;
+              currentStreamEl = null;
+              setStreaming(false);
+            }
+            break;
+        }
+      });
+
+      vscode.postMessage({ type: "ready" });
+    </script>
+  </body>
+</html>
